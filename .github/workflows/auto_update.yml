@@ -2,9 +2,9 @@ name: 24/7 自动抓取更新日剧 & 电影看板
 
 on:
   schedule:
-    # 每天北京时间 08:00 与 20:00 自动触发云端抓取
-    - cron: '0 0,12 * * *'
-  workflow_dispatch: # 支持网页端手动点击一键更新
+    # 设定 Cron 定时任务：每 2 小时云端自动抓取并更新一次
+    - cron: '0 */2 * * *'
+  workflow_dispatch: # 支持在 GitHub 页面上手动点击一键立即更新
 
 jobs:
   build-and-update:
@@ -23,7 +23,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4
 
-      - name: 运行爬虫抓取最新日剧/电影数据并生成网页
+      - name: 运行爬虫抓取最新日剧/电影/海报/简介
         run: |
           python code_artifact.py || python run.py
 
@@ -32,5 +32,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add japan_media_data.json index.html || true
-          git commit -m "🤖 [24/7 Auto-Update] 定时更新日剧与电影看板数据 [skip ci]" || exit 0
+          git commit -m "🤖 [24/7 Auto-Update] 每2小时自动拉取最新日剧电影与简介 [skip ci]" || exit 0
           git push
