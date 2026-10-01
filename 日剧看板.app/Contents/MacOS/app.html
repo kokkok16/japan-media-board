@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="never">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日剧与电影看板</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; background-color: #f5f5f7; color: #1d1d1f; padding: 24px; min-height: 100vh; }
+        header { max-width: 1200px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        h1 { font-size: 26px; font-weight: 700; color: #1d1d1f; }
+        .meta-info { font-size: 14px; color: #86868b; background: #fff; padding: 6px 14px; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .controls { max-width: 1200px; margin: 0 auto 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+        input, select { padding: 10px 14px; border-radius: 12px; border: 1px solid #d2d2d7; font-size: 14px; outline: none; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+        input { flex: 1; min-width: 220px; }
+        .grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+        
+        .card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.04); transition: all 0.25s ease; display: flex; flex-direction: column; cursor: pointer; position: relative; }
+        .card:hover { transform: translateY(-6px); box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
+        .poster-wrapper { width: 100%; height: 260px; background: #e5e5ea; overflow: hidden; }
+        .poster { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+        .card:hover .poster { transform: scale(1.05); }
+        .info { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+        .title { font-size: 15px; font-weight: 600; color: #1d1d1f; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .tag { font-size: 11px; font-weight: 600; color: #0071e3; background: #e8f2ff; padding: 3px 8px; border-radius: 6px; width: fit-content; }
+        .score { font-size: 13px; color: #ff9500; font-weight: 600; }
+
+        /* 模态框 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; opacity: 0; transition: opacity 0.2s ease; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content { background: #fff; border-radius: 20px; max-width: 620px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 28px; box-shadow: 0 25px 50px rgba(0,0,0,0.25); position: relative; display: flex; gap: 24px; flex-wrap: wrap; }
+        .modal-close { position: absolute; top: 16px; right: 20px; width: 32px; height: 32px; border-radius: 50%; background: #f2f2f7; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #86868b; cursor: pointer; }
+        .modal-close:hover { background: #e5e5ea; color: #1d1d1f; }
+        .modal-poster { width: 180px; height: 260px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
+        .modal-info { flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 10px; }
+        .modal-title { font-size: 22px; font-weight: 700; color: #1d1d1f; padding-right: 30px; line-height: 1.3; }
+        .modal-meta { font-size: 13px; color: #86868b; line-height: 1.6; }
+        .modal-summary-title { font-size: 15px; font-weight: 700; color: #1d1d1f; margin-top: 6px; }
+        .modal-summary { font-size: 14px; color: #3a3a3c; line-height: 1.65; white-space: pre-line; background: #f9f9fb; padding: 14px; border-radius: 12px; max-height: 220px; overflow-y: auto; border: 1px solid #e5e5ea; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📺 日剧 & 电影看板</h1>
+        <div class="meta-info" id="update-time">加载中...</div>
+    </header>
+    <div class="controls">
+        <input type="text" id="search" placeholder="🔍 搜索片名、演员..." oninput="filterData()">
+        <select id="category-filter" onchange="filterData()">
+            <option value="all">🎬 全部分类</option>
+            <option value="日剧">日剧</option>
+            <option value="日本电影">日本电影</option>
+            <option value="日剧剧场版">日剧剧场版</option>
+        </select>
+        <select id="quarter-filter" onchange="filterData()">
+            <option value="all">🗓️️ 全部分组 / 季度</option>
+        </select>
+    </div>
+
+    <div class="grid" id="media-grid"></div>
+
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-close" onclick="closeModal()">&times;</div>
+            <img class="modal-poster" id="modal-img" src="" alt="">
+            <div class="modal-info">
+                <div class="tag" id="modal-tag"></div>
+                <div class="modal-title" id="modal-title"></div>
+                <div class="score" id="modal-score"></div>
+                <div class="modal-meta" id="modal-meta"></div>
+                <div class="modal-summary-title">📖 剧情简介</div>
+                <div class="modal-summary" id="modal-summary"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 关键：防盗链图片替换机制
+        function getCleanPoster(url) {
+            if (!url) return 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=400';
+            return url.replace(/https?:\/\/img\d\.doubanio\.com/g, 'https://img9.doubanio.com');
+        }
+
+        let allItems = [];
+        let filteredItems = [];
+
+        function init() {
+            try {
+                // 直接将 JSON 数据嵌入 JS 变量
+                const data = {
+  "updated_at": "2026-10-01 17:04:34",
+  "total_count": 200,
+  "items": [
+    {
+      "id": "tv_37472961",
+      "db_id": "37472961",
+      "title": "假面美颜",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2935306689.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/37472961/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37296349",
+      "db_id": "37296349",
+      "title": "幸福伽菜子的快乐杀手生活 第二季",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934937530.jpg",
+      "score": "8.0",
+      "douban_url": "https://movie.douban.com/subject/37296349/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38544583",
+      "db_id": "38544583",
+      "title": "要我和你交往也不是不行",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933890010.jpg",
+      "score": "8.6",
+      "douban_url": "https://movie.douban.com/subject/38544583/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38522945",
+      "db_id": "38522945",
+      "title": "虚无的十字架",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2935021833.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38522945/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38409190",
+      "db_id": "38409190",
+      "title": "假面骑士麦斯",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934657040.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/38409190/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38554811",
+      "db_id": "38554811",
+      "title": "第二次恋爱才完美 第二季",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2934657851.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/38554811/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38363582",
+      "db_id": "38363582",
+      "title": "用税款买的书",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2934386631.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38363582/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38197629",
+      "db_id": "38197629",
+      "title": "S&X",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2934482741.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/38197629/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38230767",
+      "db_id": "38230767",
+      "title": "吃饱睡足等幸福～早春养生篇～",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2935096347.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/38230767/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38553808",
+      "db_id": "38553808",
+      "title": "等一下啦，春虎同学",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2935261069.jpg",
+      "score": "5.9",
+      "douban_url": "https://movie.douban.com/subject/38553808/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38061818",
+      "db_id": "38061818",
+      "title": "不良一族寻爱记 第二季",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934082899.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/38061818/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38509398",
+      "db_id": "38509398",
+      "title": "你的天空～晴转恋～",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933151729.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38509398/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38422799",
+      "db_id": "38422799",
+      "title": "度假法则",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933568045.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38422799/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_36559317",
+      "db_id": "36559317",
+      "title": "别班 第二季",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931172415.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/36559317/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38433742",
+      "db_id": "38433742",
+      "title": "角醒猎人 欧米茄号角",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2933432271.jpg",
+      "score": "7.2",
+      "douban_url": "https://movie.douban.com/subject/38433742/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38483442",
+      "db_id": "38483442",
+      "title": "大机场～GATE24 ～",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933964522.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38483442/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38509161",
+      "db_id": "38509161",
+      "title": "东京三十而已",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934336689.jpg",
+      "score": "6.5",
+      "douban_url": "https://movie.douban.com/subject/38509161/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37862314",
+      "db_id": "37862314",
+      "title": "麻辣教师 第二季",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934260187.jpg",
+      "score": "6.7",
+      "douban_url": "https://movie.douban.com/subject/37862314/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38436353",
+      "db_id": "38436353",
+      "title": "ALIUS - 特定事件调查档案 -",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2934269086.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38436353/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38445508",
+      "db_id": "38445508",
+      "title": "犯罪者",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2932014749.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/38445508/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38436802",
+      "db_id": "38436802",
+      "title": "请保持名侦探原来的样子",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933865486.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/38436802/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38481354",
+      "db_id": "38481354",
+      "title": "你的喜欢无与伦比",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2934110201.jpg",
+      "score": "6.6",
+      "douban_url": "https://movie.douban.com/subject/38481354/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38392214",
+      "db_id": "38392214",
+      "title": "告白：第25年的秘密",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2934009925.jpg",
+      "score": "7.0",
+      "douban_url": "https://movie.douban.com/subject/38392214/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38462800",
+      "db_id": "38462800",
+      "title": "直到T恤干透",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933773245.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/38462800/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38544237",
+      "db_id": "38544237",
+      "title": "直到T恤干透 番外篇",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933887545.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38544237/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38517090",
+      "db_id": "38517090",
+      "title": "老公要求我去出轨",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933287155.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38517090/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38495207",
+      "db_id": "38495207",
+      "title": "尾调",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2934016765.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38495207/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38509422",
+      "db_id": "38509422",
+      "title": "冷淡同期的溺爱癖",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933152090.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38509422/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38465369",
+      "db_id": "38465369",
+      "title": "Crossroad～救命救急的约定～",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933301244.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38465369/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38353942",
+      "db_id": "38353942",
+      "title": "再见黑色",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933910970.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38353942/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38500285",
+      "db_id": "38500285",
+      "title": "明明已经杀了丈夫",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2932960618.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/38500285/",
+      "summary": "《明明已经杀了丈夫》目前在豆瓣评分为 5.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38212354",
+      "db_id": "38212354",
+      "title": "一次元的扦插",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933849055.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/38212354/",
+      "summary": "《一次元的扦插》目前在豆瓣评分为 5.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38480722",
+      "db_id": "38480722",
+      "title": "我的虚构",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934181620.jpg",
+      "score": "6.1",
+      "douban_url": "https://movie.douban.com/subject/38480722/",
+      "summary": "《我的虚构》目前在豆瓣评分为 6.1 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37925780",
+      "db_id": "37925780",
+      "title": "提欧奥特曼",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2932744636.jpg",
+      "score": "8.8",
+      "douban_url": "https://movie.douban.com/subject/37925780/",
+      "summary": "《提欧奥特曼》目前在豆瓣评分为 8.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38428093",
+      "db_id": "38428093",
+      "title": "怪奇-伊藤润二令人彻夜难眠的奇异故事-",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933963445.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/38428093/",
+      "summary": "《怪奇-伊藤润二令人彻夜难眠的奇异故事-》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38509863",
+      "db_id": "38509863",
+      "title": "晚酌的流派5：夏篇",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2934350775.jpg",
+      "score": "7.2",
+      "douban_url": "https://movie.douban.com/subject/38509863/",
+      "summary": "《晚酌的流派5：夏篇》目前在豆瓣评分为 7.2 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38489149",
+      "db_id": "38489149",
+      "title": "仆人的王子殿下",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2934111104.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/38489149/",
+      "summary": "《仆人的王子殿下》目前在豆瓣评分为 5.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_36883877",
+      "db_id": "36883877",
+      "title": "气体人第一号",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933822653.jpg",
+      "score": "6.7",
+      "douban_url": "https://movie.douban.com/subject/36883877/",
+      "summary": "《气体人第一号》目前在豆瓣评分为 6.7 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38501877",
+      "db_id": "38501877",
+      "title": "普通的恋爱",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933353049.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/38501877/",
+      "summary": "《普通的恋爱》目前在豆瓣评分为 5.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38500292",
+      "db_id": "38500292",
+      "title": "夫妇与16岁～疯狂的邻居～",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933360534.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/38500292/",
+      "summary": "《夫妇与16岁～疯狂的邻居～》目前在豆瓣评分为 6.3 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38509434",
+      "db_id": "38509434",
+      "title": "只是一起吃顿饭",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2933305631.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38509434/",
+      "summary": "《只是一起吃顿饭》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38491854",
+      "db_id": "38491854",
+      "title": "今晚也要和连环杀手约会",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933751647.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38491854/",
+      "summary": "《今晚也要和连环杀手约会》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38479399",
+      "db_id": "38479399",
+      "title": "堕落就结束",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933744235.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38479399/",
+      "summary": "《堕落就结束》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38445959",
+      "db_id": "38445959",
+      "title": "你在夏日之中",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933741939.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/38445959/",
+      "summary": "《你在夏日之中》目前在豆瓣评分为 6.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38480695",
+      "db_id": "38480695",
+      "title": "艾米丽与玛丽亚",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2933587415.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38480695/",
+      "summary": "《艾米丽与玛丽亚》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38371456",
+      "db_id": "38371456",
+      "title": "黑江与江间",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933212599.jpg",
+      "score": "6.6",
+      "douban_url": "https://movie.douban.com/subject/38371456/",
+      "summary": "《黑江与江间》目前在豆瓣评分为 6.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37406481",
+      "db_id": "37406481",
+      "title": "格斗实况",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2932227104.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/37406481/",
+      "summary": "《格斗实况》目前在豆瓣评分为 6.3 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37657579",
+      "db_id": "37657579",
+      "title": "顾问：书写死亡的男人",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2933455917.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37657579/",
+      "summary": "《顾问：书写死亡的男人》目前在豆瓣评分为 6.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38459162",
+      "db_id": "38459162",
+      "title": "我的相抵日记",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2933771681.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/38459162/",
+      "summary": "《我的相抵日记》目前在豆瓣评分为 6.9 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38363848",
+      "db_id": "38363848",
+      "title": "午夜出租车",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2933141971.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/38363848/",
+      "summary": "《午夜出租车》目前在豆瓣评分为 7.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38362910",
+      "db_id": "38362910",
+      "title": "100天后分手的我和他",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931571469.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/38362910/",
+      "summary": "《100天后分手的我和他》目前在豆瓣评分为 7.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38211985",
+      "db_id": "38211985",
+      "title": "监狱星级餐厅",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2932851021.jpg",
+      "score": "6.5",
+      "douban_url": "https://movie.douban.com/subject/38211985/",
+      "summary": "《监狱星级餐厅》目前在豆瓣评分为 6.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_27083750",
+      "db_id": "27083750",
+      "title": "机动警察EZY",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2485396532.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/27083750/",
+      "summary": "《机动警察EZY》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38479704",
+      "db_id": "38479704",
+      "title": "危险又甜蜜",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2932559742.jpg",
+      "score": "6.6",
+      "douban_url": "https://movie.douban.com/subject/38479704/",
+      "summary": "《危险又甜蜜》目前在豆瓣评分为 6.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_36946200",
+      "db_id": "36946200",
+      "title": "灵魂之伴",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931952063.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/36946200/",
+      "summary": "《灵魂之伴》目前在豆瓣评分为 6.3 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38364076",
+      "db_id": "38364076",
+      "title": "泉京香不会沉默",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930426192.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/38364076/",
+      "summary": "《泉京香不会沉默》目前在豆瓣评分为 6.2 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38188506",
+      "db_id": "38188506",
+      "title": "我所憧憬的作家不是人类",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931921790.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38188506/",
+      "summary": "《我所憧憬的作家不是人类》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37134474",
+      "db_id": "37134474",
+      "title": "地狱占星师",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931001014.jpg",
+      "score": "8.2",
+      "douban_url": "https://movie.douban.com/subject/37134474/",
+      "summary": "《地狱占星师》目前在豆瓣评分为 8.2 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38357062",
+      "db_id": "38357062",
+      "title": "禁忌女孩(日版)",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931073848.jpg",
+      "score": "4.8",
+      "douban_url": "https://movie.douban.com/subject/38357062/",
+      "summary": "《禁忌女孩(日版)》目前在豆瓣评分为 4.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38355463",
+      "db_id": "38355463",
+      "title": "余命3个月的绿帽夫",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931172402.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/38355463/",
+      "summary": "《余命3个月的绿帽夫》目前在豆瓣评分为 5.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38248420",
+      "db_id": "38248420",
+      "title": "伪装的真实之吻",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931000975.jpg",
+      "score": "7.7",
+      "douban_url": "https://movie.douban.com/subject/38248420/",
+      "summary": "《伪装的真实之吻》目前在豆瓣评分为 7.7 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38246500",
+      "db_id": "38246500",
+      "title": "银河的一票",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2932988905.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/38246500/",
+      "summary": "《银河的一票》目前在豆瓣评分为 7.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38220935",
+      "db_id": "38220935",
+      "title": "头号战队豪兽者 白熊起源",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930875075.jpg",
+      "score": "8.5",
+      "douban_url": "https://movie.douban.com/subject/38220935/",
+      "summary": "《头号战队豪兽者 白熊起源》目前在豆瓣评分为 8.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38393577",
+      "db_id": "38393577",
+      "title": "无垢的证人",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934112737.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/38393577/",
+      "summary": "《无垢的证人》目前在豆瓣评分为 6.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38396477",
+      "db_id": "38396477",
+      "title": "瑞士手表之谜",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931042213.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38396477/",
+      "summary": "《瑞士手表之谜》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38210087",
+      "db_id": "38210087",
+      "title": "田锁兄弟",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931001637.jpg",
+      "score": "5.7",
+      "douban_url": "https://movie.douban.com/subject/38210087/",
+      "summary": "《田锁兄弟》目前在豆瓣评分为 5.7 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38188619",
+      "db_id": "38188619",
+      "title": "未解决之女 警视厅文件捜査官 第三季",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931137347.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/38188619/",
+      "summary": "《未解决之女 警视厅文件捜査官 第三季》目前在豆瓣评分为 6.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38349056",
+      "db_id": "38349056",
+      "title": "夫妇别姓刑警",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934111199.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/38349056/",
+      "summary": "《夫妇别姓刑警》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38363592",
+      "db_id": "38363592",
+      "title": "再生 ～最后英雄～",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931172095.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/38363592/",
+      "summary": "《再生 ～最后英雄～》目前在豆瓣评分为 6.2 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38363578",
+      "db_id": "38363578",
+      "title": "鲭鱼罐头，飞向宇宙",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2932408444.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38363578/",
+      "summary": "《鲭鱼罐头，飞向宇宙》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38242792",
+      "db_id": "38242792",
+      "title": "错误",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931544730.jpg",
+      "score": "6.0",
+      "douban_url": "https://movie.douban.com/subject/38242792/",
+      "summary": "《错误》目前在豆瓣评分为 6.0 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38370993",
+      "db_id": "38370993",
+      "title": "没有砍十次还不倒的树",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931544749.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38370993/",
+      "summary": "《没有砍十次还不倒的树》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_37560613",
+      "db_id": "37560613",
+      "title": "礼物",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931172186.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37560613/",
+      "summary": "《礼物》目前在豆瓣评分为 5.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38248681",
+      "db_id": "38248681",
+      "title": "时光代理人",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931089786.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38248681/",
+      "summary": "《时光代理人》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38355370",
+      "db_id": "38355370",
+      "title": "今夜在秘密厨房",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931172318.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/38355370/",
+      "summary": "《今夜在秘密厨房》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38372019",
+      "db_id": "38372019",
+      "title": "极致复仇：舍弃面容的家政妇",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2931966451.jpg",
+      "score": "4.8",
+      "douban_url": "https://movie.douban.com/subject/38372019/",
+      "summary": "《极致复仇：舍弃面容的家政妇》目前在豆瓣评分为 4.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_37742722",
+      "db_id": "37742722",
+      "title": "恶之华",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2929727345.jpg",
+      "score": "6.5",
+      "douban_url": "https://movie.douban.com/subject/37742722/",
+      "summary": "《恶之华》目前在豆瓣评分为 6.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37315809",
+      "db_id": "37315809",
+      "title": "外道之歌 第二季",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931439045.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/37315809/",
+      "summary": "《外道之歌 第二季》目前在豆瓣评分为 7.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38244425",
+      "db_id": "38244425",
+      "title": "月夜行路：答案在名作中",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931172337.jpg",
+      "score": "7.2",
+      "douban_url": "https://movie.douban.com/subject/38244425/",
+      "summary": "《月夜行路：答案在名作中》目前在豆瓣评分为 7.2 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38376031",
+      "db_id": "38376031",
+      "title": "BORDERLESS～广域移动搜查队～",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931001663.jpg",
+      "score": "4.7",
+      "douban_url": "https://movie.douban.com/subject/38376031/",
+      "summary": "《BORDERLESS～广域移动搜查队～》目前在豆瓣评分为 4.7 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38363163",
+      "db_id": "38363163",
+      "title": "所爱之人",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930949134.jpg",
+      "score": "5.7",
+      "douban_url": "https://movie.douban.com/subject/38363163/",
+      "summary": "《所爱之人》目前在豆瓣评分为 5.7 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38231349",
+      "db_id": "38231349",
+      "title": "为时已是寿司！？",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931172329.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/38231349/",
+      "summary": "《为时已是寿司！？》目前在豆瓣评分为 7.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38230920",
+      "db_id": "38230920",
+      "title": "雾蓝色的雨后晴天",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931028118.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/38230920/",
+      "summary": "《雾蓝色的雨后晴天》目前在豆瓣评分为 6.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38362761",
+      "db_id": "38362761",
+      "title": "过多的爱与谋杀",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930969433.jpg",
+      "score": "5.4",
+      "douban_url": "https://movie.douban.com/subject/38362761/",
+      "summary": "《过多的爱与谋杀》目前在豆瓣评分为 5.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38361130",
+      "db_id": "38361130",
+      "title": "胡乱的深见君",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930289256.jpg",
+      "score": "4.4",
+      "douban_url": "https://movie.douban.com/subject/38361130/",
+      "summary": "《胡乱的深见君》目前在豆瓣评分为 4.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38372718",
+      "db_id": "38372718",
+      "title": "犬饲先生是隐秘溺爱上司",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930574427.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38372718/",
+      "summary": "《犬饲先生是隐秘溺爱上司》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37932343",
+      "db_id": "37932343",
+      "title": "对决",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931045897.jpg",
+      "score": "7.0",
+      "douban_url": "https://movie.douban.com/subject/37932343/",
+      "summary": "《对决》目前在豆瓣评分为 7.0 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37202647",
+      "db_id": "37202647",
+      "title": "血与汗",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931573034.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/37202647/",
+      "summary": "《血与汗》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38359420",
+      "db_id": "38359420",
+      "title": "孤独的美食家 第十一季",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930746515.jpg",
+      "score": "8.5",
+      "douban_url": "https://movie.douban.com/subject/38359420/",
+      "summary": "《孤独的美食家 第十一季》目前在豆瓣评分为 8.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37315587",
+      "db_id": "37315587",
+      "title": "九条的大罪",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930949139.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/37315587/",
+      "summary": "《九条的大罪》目前在豆瓣评分为 7.1 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_38361054",
+      "db_id": "38361054",
+      "title": "失恋歌牌",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930294694.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/38361054/",
+      "summary": "《失恋歌牌》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38364092",
+      "db_id": "38364092",
+      "title": "不生孩子的女人不可以吗？DINKs的十月怀胎",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931866376.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/38364092/",
+      "summary": "《不生孩子的女人不可以吗？DINKs的十月怀胎》目前在豆瓣评分为 5.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_37448076",
+      "db_id": "37448076",
+      "title": "棒球大联盟",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930134290.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37448076/",
+      "summary": "《棒球大联盟》目前在豆瓣评分为 5.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37517011",
+      "db_id": "37517011",
+      "title": "单恋",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2930004891.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37517011/",
+      "summary": "《单恋》目前在豆瓣评分为 6.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37456957",
+      "db_id": "37456957",
+      "title": "新选组镇魂歌 江户青春篇",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931001852.jpg",
+      "score": "7.2",
+      "douban_url": "https://movie.douban.com/subject/37456957/",
+      "summary": "《新选组镇魂歌 江户青春篇》目前在豆瓣评分为 7.2 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37855213",
+      "db_id": "37855213",
+      "title": "恶魔的手球歌",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930688267.jpg",
+      "score": "7.0",
+      "douban_url": "https://movie.douban.com/subject/37855213/",
+      "summary": "《恶魔的手球歌》目前在豆瓣评分为 7.0 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38221203",
+      "db_id": "38221203",
+      "title": "对比的我和你",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2929341595.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/38221203/",
+      "summary": "《对比的我和你》目前在豆瓣评分为 7.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_38208610",
+      "db_id": "38208610",
+      "title": "某小说家的日记",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2930209501.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/38208610/",
+      "summary": "《某小说家的日记》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37435778",
+      "db_id": "37435778",
+      "title": "鲁山人之灶",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930193894.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/37435778/",
+      "summary": "《鲁山人之灶》目前在豆瓣评分为 7.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_38243036",
+      "db_id": "38243036",
+      "title": "被女孩子逆推不行吗？",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930652758.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/38243036/",
+      "summary": "《被女孩子逆推不行吗？》目前在豆瓣评分为 7.3 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38352225",
+      "db_id": "38352225",
+      "title": "TXQ FICTION 神木隆之介",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2930179445.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/38352225/",
+      "summary": "《TXQ FICTION 神木隆之介》目前在豆瓣评分为 7.3 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37168638",
+      "db_id": "37168638",
+      "title": "钟表馆事件",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2927478219.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/37168638/",
+      "summary": "《钟表馆事件》目前在豆瓣评分为 7.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37515984",
+      "db_id": "37515984",
+      "title": "厨刀与小青椒-一日的料理帖- 第二季",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928935264.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/37515984/",
+      "summary": "《厨刀与小青椒-一日的料理帖- 第二季》目前在豆瓣评分为 6.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37855634",
+      "db_id": "37855634",
+      "title": "超宇宙刑事卡邦 无限",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928385416.jpg",
+      "score": "4.6",
+      "douban_url": "https://movie.douban.com/subject/37855634/",
+      "summary": "《超宇宙刑事卡邦 无限》目前在豆瓣评分为 4.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_38212152",
+      "db_id": "38212152",
+      "title": "乞救之噬，覆食殆尽",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930761330.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/38212152/",
+      "summary": "《乞救之噬，覆食殆尽》目前在豆瓣评分为 6.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37925823",
+      "db_id": "37925823",
+      "title": "假面骑士Eins with Girls Remix",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928291665.jpg",
+      "score": "7.0",
+      "douban_url": "https://movie.douban.com/subject/37925823/",
+      "summary": "《假面骑士Eins with Girls Remix》目前在豆瓣评分为 7.0 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37456965",
+      "db_id": "37456965",
+      "title": "缉毒警与疯犬",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928976744.jpg",
+      "score": "",
+      "douban_url": "https://movie.douban.com/subject/37456965/",
+      "summary": "《缉毒警与疯犬》目前在豆瓣评分为  分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37890529",
+      "db_id": "37890529",
+      "title": "前科搜研的主妇",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2929035999.jpg",
+      "score": "6.1",
+      "douban_url": "https://movie.douban.com/subject/37890529/",
+      "summary": "《前科搜研的主妇》目前在豆瓣评分为 6.1 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_37891202",
+      "db_id": "37891202",
+      "title": "冬日的什么呀，春日的什么呢",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2929002635.jpg",
+      "score": "7.7",
+      "douban_url": "https://movie.douban.com/subject/37891202/",
+      "summary": "《冬日的什么呀，春日的什么呢》目前在豆瓣评分为 7.7 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37862375",
+      "db_id": "37862375",
+      "title": "弹珠汽水猴子",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928976654.jpg",
+      "score": "7.8",
+      "douban_url": "https://movie.douban.com/subject/37862375/",
+      "summary": "《弹珠汽水猴子》目前在豆瓣评分为 7.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37824892",
+      "db_id": "37824892",
+      "title": "未来的儿子",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928951458.jpg",
+      "score": "7.8",
+      "douban_url": "https://movie.douban.com/subject/37824892/",
+      "summary": "《未来的儿子》目前在豆瓣评分为 7.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37161697",
+      "db_id": "37161697",
+      "title": "我的咖啡男友 第二季",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2929875525.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/37161697/",
+      "summary": "《我的咖啡男友 第二季》目前在豆瓣评分为 7.1 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_37827883",
+      "db_id": "37827883",
+      "title": "东京P.D. 警视厅公关二课",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2929036013.jpg",
+      "score": "6.6",
+      "douban_url": "https://movie.douban.com/subject/37827883/",
+      "summary": "《东京P.D. 警视厅公关二课》目前在豆瓣评分为 6.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37855030",
+      "db_id": "37855030",
+      "title": "再会～沉默的真相～",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928087176.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/37855030/",
+      "summary": "《再会～沉默的真相～》目前在豆瓣评分为 6.8 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_37660498",
+      "db_id": "37660498",
+      "title": "直到对挚友的“要不要同居”说出“好”",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928951634.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/37660498/",
+      "summary": "《直到对挚友的“要不要同居”说出“好”》目前在豆瓣评分为 7.1 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37645091",
+      "db_id": "37645091",
+      "title": "紫菜包饭和饭团～相爱的两个人相似又不一样～",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2929168828.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37645091/",
+      "summary": "《紫菜包饭和饭团～相爱的两个人相似又不一样～》目前在豆瓣评分为 6.4 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "tv_37448088",
+      "db_id": "37448088",
+      "title": "不良医生！",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2929168783.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/37448088/",
+      "summary": "《不良医生！》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年冬季档 (1月)"
+    },
+    {
+      "id": "tv_37834904",
+      "db_id": "37834904",
+      "title": "比熊猫更不擅长恋爱的我们",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928976548.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/37834904/",
+      "summary": "《比熊猫更不擅长恋爱的我们》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年春季档 (4月)"
+    },
+    {
+      "id": "tv_36331241",
+      "db_id": "36331241",
+      "title": "枪神 观星之人",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2926070169.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/36331241/",
+      "summary": "《枪神 观星之人》目前在豆瓣评分为 5.5 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年夏季档 (7月)"
+    },
+    {
+      "id": "tv_37871576",
+      "db_id": "37871576",
+      "title": "一切都是为了你",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2932725674.jpg",
+      "score": "4.6",
+      "douban_url": "https://movie.douban.com/subject/37871576/",
+      "summary": "《一切都是为了你》目前在豆瓣评分为 4.6 分。",
+      "category": "日剧",
+      "release_year": "2026年",
+      "quarter_group": "2026年秋季档 (10月)"
+    },
+    {
+      "id": "movie_38460894",
+      "db_id": "38460894",
+      "title": "M.I.S.S.I.O.N. 歌剧般的潜入搜查官",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2934261763.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/38460894/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_38376440",
+      "db_id": "38376440",
+      "title": "从邦子开始的故事",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931640588.jpg",
+      "score": "6.6",
+      "douban_url": "https://movie.douban.com/subject/38376440/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_38112572",
+      "db_id": "38112572",
+      "title": "黑牢城",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930561208.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/38112572/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37227467",
+      "db_id": "37227467",
+      "title": "盒子里的羊",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2932581748.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37227467/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_38067530",
+      "db_id": "38067530",
+      "title": "废用身",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928395163.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/38067530/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_38186304",
+      "db_id": "38186304",
+      "title": "追踪者游戏W 水鱼交融",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928838233.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/38186304/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37841115",
+      "db_id": "37841115",
+      "title": "未来",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2929952659.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/37841115/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_38396481",
+      "db_id": "38396481",
+      "title": "麦卡托·骑士",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2931042135.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/38396481/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37233625",
+      "db_id": "37233625",
+      "title": "坂本日常 真人版",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930561218.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/37233625/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_38356743",
+      "db_id": "38356743",
+      "title": "闯入泽田美由纪的蛤蟆乐园",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930203339.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/38356743/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37332150",
+      "db_id": "37332150",
+      "title": "名侦探柯南：高速公路的堕天使",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2931453638.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/37332150/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36806351",
+      "db_id": "36806351",
+      "title": "超级马力欧银河大电影",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2930472372.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/36806351/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37937442",
+      "db_id": "37937442",
+      "title": "剧场版 暗杀教室 大家的时间",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928094579.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/37937442/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37939313",
+      "db_id": "37939313",
+      "title": "放送禁止 我的三位妻子",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928307575.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37939313/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37046521",
+      "db_id": "37046521",
+      "title": "舞林杀手",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2927437486.jpg",
+      "score": "5.7",
+      "douban_url": "https://movie.douban.com/subject/37046521/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37516907",
+      "db_id": "37516907",
+      "title": "木挽町复仇记",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2925050015.jpg",
+      "score": "7.2",
+      "douban_url": "https://movie.douban.com/subject/37516907/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36872791",
+      "db_id": "36872791",
+      "title": "花绿青绽放之日",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928185066.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/36872791/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37482099",
+      "db_id": "37482099",
+      "title": "银魂剧场版 -吉原炎上篇-",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928249117.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/37482099/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37069709",
+      "db_id": "37069709",
+      "title": "我心里危险的东西 剧场版",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2929620611.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/37069709/",
+      "summary": "暂无详细故事简介。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37806619",
+      "db_id": "37806619",
+      "title": "这就是我",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2929035956.jpg",
+      "score": "6.7",
+      "douban_url": "https://movie.douban.com/subject/37806619/",
+      "summary": "暂无详细故事简介。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37897127",
+      "db_id": "37897127",
+      "title": "银河特急 Milky✩Subway 各站停车前往剧场",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928188292.jpg",
+      "score": "8.1",
+      "douban_url": "https://movie.douban.com/subject/37897127/",
+      "summary": "《银河特急 Milky✩Subway 各站停车前往剧场》目前在豆瓣评分为 8.1 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37315580",
+      "db_id": "37315580",
+      "title": "不久，就要永别了",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2927600456.jpg",
+      "score": "6.7",
+      "douban_url": "https://movie.douban.com/subject/37315580/",
+      "summary": "《不久，就要永别了》目前在豆瓣评分为 6.7 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36117593",
+      "db_id": "36117593",
+      "title": "机动战士高达 闪光的哈萨维 喀耳刻的魔女",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2926009741.jpg",
+      "score": "7.9",
+      "douban_url": "https://movie.douban.com/subject/36117593/",
+      "summary": "《机动战士高达 闪光的哈萨维 喀耳刻的魔女》目前在豆瓣评分为 7.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37233775",
+      "db_id": "37233775",
+      "title": "炎上",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2923426812.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/37233775/",
+      "summary": "《炎上》目前在豆瓣评分为 6.2 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37825206",
+      "db_id": "37825206",
+      "title": "超时空辉夜姬！",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928772586.jpg",
+      "score": "8.3",
+      "douban_url": "https://movie.douban.com/subject/37825206/",
+      "summary": "《超时空辉夜姬！》目前在豆瓣评分为 8.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37279589",
+      "db_id": "37279589",
+      "title": "新年伊始 不合适也要有个限度！～不能认真聊聊吗？～",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2928767568.jpg",
+      "score": "7.0",
+      "douban_url": "https://movie.douban.com/subject/37279589/",
+      "summary": "《新年伊始 不合适也要有个限度！～不能认真聊聊吗？～》目前在豆瓣评分为 7.0 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36135296",
+      "db_id": "36135296",
+      "title": "教场 Reunion",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2927236190.jpg",
+      "score": "6.0",
+      "douban_url": "https://movie.douban.com/subject/36135296/",
+      "summary": "《教场 Reunion》目前在豆瓣评分为 6.0 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37089563",
+      "db_id": "37089563",
+      "title": "LAST MAN-全盲搜查官- FAKE／TRUTH",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2927025296.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37089563/",
+      "summary": "《LAST MAN-全盲搜查官- FAKE／TRUTH》目前在豆瓣评分为 6.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36185555",
+      "db_id": "36185555",
+      "title": "剧场版 紧急审讯室 THE FINAL",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2926236935.jpg",
+      "score": "6.7",
+      "douban_url": "https://movie.douban.com/subject/36185555/",
+      "summary": "《剧场版 紧急审讯室 THE FINAL》目前在豆瓣评分为 6.7 分。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37089564",
+      "db_id": "37089564",
+      "title": "LAST MAN -初恋-",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2923816992.jpg",
+      "score": "5.9",
+      "douban_url": "https://movie.douban.com/subject/37089564/",
+      "summary": "《LAST MAN -初恋-》目前在豆瓣评分为 5.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37512260",
+      "db_id": "37512260",
+      "title": "星与月是天上的洞",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924949043.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37512260/",
+      "summary": "《星与月是天上的洞》目前在豆瓣评分为 5.8 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37130746",
+      "db_id": "37130746",
+      "title": "十项舞蹈",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2927024110.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/37130746/",
+      "summary": "《十项舞蹈》目前在豆瓣评分为 6.8 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37168723",
+      "db_id": "37168723",
+      "title": "浪漫杀手",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2925761300.jpg",
+      "score": "5.9",
+      "douban_url": "https://movie.douban.com/subject/37168723/",
+      "summary": "《浪漫杀手》目前在豆瓣评分为 5.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37560609",
+      "db_id": "37560609",
+      "title": "我们不可能成为恋人！绝对不行。 (※似乎可行？) 〜再次闪耀！〜",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2925550170.jpg",
+      "score": "8.1",
+      "douban_url": "https://movie.douban.com/subject/37560609/",
+      "summary": "《我们不可能成为恋人！绝对不行。 (※似乎可行？) 〜再次闪耀！〜》目前在豆瓣评分为 8.1 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_34930810",
+      "db_id": "34930810",
+      "title": "平场之月",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2923847559.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/34930810/",
+      "summary": "《平场之月》目前在豆瓣评分为 7.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36909168",
+      "db_id": "36909168",
+      "title": "无法在你的脸上哭泣",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924212993.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/36909168/",
+      "summary": "《无法在你的脸上哭泣》目前在豆瓣评分为 6.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37505432",
+      "db_id": "37505432",
+      "title": "咒术回战 涩谷事变×死灭回游 剧场版",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2926215249.jpg",
+      "score": "6.6",
+      "douban_url": "https://movie.douban.com/subject/37505432/",
+      "summary": "《咒术回战 涩谷事变×死灭回游 剧场版》目前在豆瓣评分为 6.6 分。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36847506",
+      "db_id": "36847506",
+      "title": "蓝色男孩事件",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2923532908.jpg",
+      "score": "6.5",
+      "douban_url": "https://movie.douban.com/subject/36847506/",
+      "summary": "《蓝色男孩事件》目前在豆瓣评分为 6.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37077505",
+      "db_id": "37077505",
+      "title": "爆弹",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2923847565.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/37077505/",
+      "summary": "《爆弹》目前在豆瓣评分为 7.1 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37213104",
+      "db_id": "37213104",
+      "title": "东京出租车",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924658739.jpg",
+      "score": "8.0",
+      "douban_url": "https://movie.douban.com/subject/37213104/",
+      "summary": "《东京出租车》目前在豆瓣评分为 8.0 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37388734",
+      "db_id": "37388734",
+      "title": "午夜之花",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924896557.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/37388734/",
+      "summary": "《午夜之花》目前在豆瓣评分为 6.2 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36689647",
+      "db_id": "36689647",
+      "title": "遇见世界",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2923972376.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/36689647/",
+      "summary": "《遇见世界》目前在豆瓣评分为 7.6 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_35633902",
+      "db_id": "35633902",
+      "title": "佐贺偶像是传奇 梦想银河乐园",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2923801264.jpg",
+      "score": "8.6",
+      "douban_url": "https://movie.douban.com/subject/35633902/",
+      "summary": "《佐贺偶像是传奇 梦想银河乐园》目前在豆瓣评分为 8.6 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37517140",
+      "db_id": "37517140",
+      "title": "藤本树 17-26",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2925051474.jpg",
+      "score": "8.2",
+      "douban_url": "https://movie.douban.com/subject/37517140/",
+      "summary": "《藤本树 17-26》目前在豆瓣评分为 8.2 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37168695",
+      "db_id": "37168695",
+      "title": "草莓月亮",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928062825.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/37168695/",
+      "summary": "《草莓月亮》目前在豆瓣评分为 7.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37296317",
+      "db_id": "37296317",
+      "title": "喂，应为",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2923643014.jpg",
+      "score": "6.3",
+      "douban_url": "https://movie.douban.com/subject/37296317/",
+      "summary": "《喂，应为》目前在豆瓣评分为 6.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37469727",
+      "db_id": "37469727",
+      "title": "祸祸女",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2927776379.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37469727/",
+      "summary": "《祸祸女》目前在豆瓣评分为 5.8 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37090070",
+      "db_id": "37090070",
+      "title": "明明不是我！",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2922946934.jpg",
+      "score": "5.7",
+      "douban_url": "https://movie.douban.com/subject/37090070/",
+      "summary": "《明明不是我！》目前在豆瓣评分为 5.7 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37463586",
+      "db_id": "37463586",
+      "title": "灾 电影版",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2927408019.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37463586/",
+      "summary": "《灾 电影版》目前在豆瓣评分为 5.8 分。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37069578",
+      "db_id": "37069578",
+      "title": "万事顺利",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2927082318.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/37069578/",
+      "summary": "《万事顺利》目前在豆瓣评分为 7.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37322522",
+      "db_id": "37322522",
+      "title": "愚者的身份",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2921478664.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/37322522/",
+      "summary": "《愚者的身份》目前在豆瓣评分为 6.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36883109",
+      "db_id": "36883109",
+      "title": "宝岛",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2920386357.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/36883109/",
+      "summary": "《宝岛》目前在豆瓣评分为 6.2 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37049323",
+      "db_id": "37049323",
+      "title": "秒速5厘米",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2924245935.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/37049323/",
+      "summary": "《秒速5厘米》目前在豆瓣评分为 7.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37090072",
+      "db_id": "37090072",
+      "title": "把哥哥变成可以携带的尺寸",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924841170.jpg",
+      "score": "6.8",
+      "douban_url": "https://movie.douban.com/subject/37090072/",
+      "summary": "《把哥哥变成可以携带的尺寸》目前在豆瓣评分为 6.8 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36903165",
+      "db_id": "36903165",
+      "title": "棋盘上的向日葵",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2923642700.jpg",
+      "score": "6.1",
+      "douban_url": "https://movie.douban.com/subject/36903165/",
+      "summary": "《棋盘上的向日葵》目前在豆瓣评分为 6.1 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37045933",
+      "db_id": "37045933",
+      "title": "无名之町",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924841208.jpg",
+      "score": "5.7",
+      "douban_url": "https://movie.douban.com/subject/37045933/",
+      "summary": "《无名之町》目前在豆瓣评分为 5.7 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37331479",
+      "db_id": "37331479",
+      "title": "捏造贝多芬",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2923042867.jpg",
+      "score": "5.6",
+      "douban_url": "https://movie.douban.com/subject/37331479/",
+      "summary": "《捏造贝多芬》目前在豆瓣评分为 5.6 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36650662",
+      "db_id": "36650662",
+      "title": "临租家庭",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2925950309.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/36650662/",
+      "summary": "《临租家庭》目前在豆瓣评分为 7.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37469599",
+      "db_id": "37469599",
+      "title": "如果能成为恋人",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2924739992.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/37469599/",
+      "summary": "《如果能成为恋人》目前在豆瓣评分为 6.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36879624",
+      "db_id": "36879624",
+      "title": "迷失之地",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2932030911.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/36879624/",
+      "summary": "《迷失之地》目前在豆瓣评分为 7.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37154144",
+      "db_id": "37154144",
+      "title": "隔壁的星光",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2922021090.jpg",
+      "score": "5.5",
+      "douban_url": "https://movie.douban.com/subject/37154144/",
+      "summary": "《隔壁的星光》目前在豆瓣评分为 5.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37227650",
+      "db_id": "37227650",
+      "title": "旅途中的日子",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2923212186.jpg",
+      "score": "7.1",
+      "douban_url": "https://movie.douban.com/subject/37227650/",
+      "summary": "《旅途中的日子》目前在豆瓣评分为 7.1 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37155129",
+      "db_id": "37155129",
+      "title": "近畿怪谈",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2925257530.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37155129/",
+      "summary": "《近畿怪谈》目前在豆瓣评分为 6.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37161026",
+      "db_id": "37161026",
+      "title": "蜡笔小新：灼热的春日部舞者们",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2926883984.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/37161026/",
+      "summary": "《蜡笔小新：灼热的春日部舞者们》目前在豆瓣评分为 7.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37046106",
+      "db_id": "37046106",
+      "title": "TOKYO MER～移动的急救室～南海任务 电影版",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2920458766.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/37046106/",
+      "summary": "《TOKYO MER～移动的急救室～南海任务 电影版》目前在豆瓣评分为 7.4 分。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37209893",
+      "db_id": "37209893",
+      "title": "剧场版 假面骑士加布 零食之家的侵略者",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2922709094.jpg",
+      "score": "8.3",
+      "douban_url": "https://movie.douban.com/subject/37209893/",
+      "summary": "《剧场版 假面骑士加布 零食之家的侵略者》目前在豆瓣评分为 8.3 分。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37209859",
+      "db_id": "37209859",
+      "title": "头号战队豪兽者：复活的特伽索德",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2922695153.jpg",
+      "score": "7.5",
+      "douban_url": "https://movie.douban.com/subject/37209859/",
+      "summary": "《头号战队豪兽者：复活的特伽索德》目前在豆瓣评分为 7.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36524559",
+      "db_id": "36524559",
+      "title": "鬼灭之刃：无限城篇 第一章 猗窝座再袭",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2926775179.jpg",
+      "score": "8.5",
+      "douban_url": "https://movie.douban.com/subject/36524559/",
+      "summary": "《鬼灭之刃：无限城篇 第一章 猗窝座再袭》目前在豆瓣评分为 8.5 分。",
+      "category": "日剧剧场版",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36801987",
+      "db_id": "36801987",
+      "title": "嘻嘻嘻嘻吸血鬼",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2928172526.jpg",
+      "score": "6.5",
+      "douban_url": "https://movie.douban.com/subject/36801987/",
+      "summary": "《嘻嘻嘻嘻吸血鬼》目前在豆瓣评分为 6.5 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37269786",
+      "db_id": "37269786",
+      "title": "不被爱也没关系",
+      "poster_url": "https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2920370751.jpg",
+      "score": "6.9",
+      "douban_url": "https://movie.douban.com/subject/37269786/",
+      "summary": "《不被爱也没关系》目前在豆瓣评分为 6.9 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37273219",
+      "db_id": "37273219",
+      "title": "喂，太宰",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2921892974.jpg",
+      "score": "6.2",
+      "douban_url": "https://movie.douban.com/subject/37273219/",
+      "summary": "《喂，太宰》目前在豆瓣评分为 6.2 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_35750086",
+      "db_id": "35750086",
+      "title": "维珍朋克：发条女孩",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2922885079.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/35750086/",
+      "summary": "《维珍朋克：发条女孩》目前在豆瓣评分为 7.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37134239",
+      "db_id": "37134239",
+      "title": "夏日暗涌",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2921440709.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37134239/",
+      "summary": "《夏日暗涌》目前在豆瓣评分为 6.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37149016",
+      "db_id": "37149016",
+      "title": "鲁邦三世：不死身的血族",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2920157479.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37149016/",
+      "summary": "《鲁邦三世：不死身的血族》目前在豆瓣评分为 6.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37077139",
+      "db_id": "37077139",
+      "title": "夏日沙上",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2920399575.jpg",
+      "score": "5.8",
+      "douban_url": "https://movie.douban.com/subject/37077139/",
+      "summary": "《夏日沙上》目前在豆瓣评分为 5.8 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37344363",
+      "db_id": "37344363",
+      "title": "鲁邦三世：钱形与两个鲁邦",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2921280569.jpg",
+      "score": "7.3",
+      "douban_url": "https://movie.douban.com/subject/37344363/",
+      "summary": "《鲁邦三世：钱形与两个鲁邦》目前在豆瓣评分为 7.3 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37296294",
+      "db_id": "37296294",
+      "title": "终点的少女",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2922193463.jpg",
+      "score": "6.4",
+      "douban_url": "https://movie.douban.com/subject/37296294/",
+      "summary": "《终点的少女》目前在豆瓣评分为 6.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_37037980",
+      "db_id": "37037980",
+      "title": "小林家的龙丫头：怕寂寞的龙",
+      "poster_url": "https://img3.doubanio.com/view/photo/l_ratio_poster/public/p2926425342.jpg",
+      "score": "7.4",
+      "douban_url": "https://movie.douban.com/subject/37037980/",
+      "summary": "《小林家的龙丫头：怕寂寞的龙》目前在豆瓣评分为 7.4 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36942731",
+      "db_id": "36942731",
+      "title": "普通的孩子",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2927934376.jpg",
+      "score": "7.6",
+      "douban_url": "https://movie.douban.com/subject/36942731/",
+      "summary": "《普通的孩子》目前在豆瓣评分为 7.6 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    },
+    {
+      "id": "movie_36531164",
+      "db_id": "36531164",
+      "title": "废世界",
+      "poster_url": "https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2919212246.jpg",
+      "score": "7.2",
+      "douban_url": "https://movie.douban.com/subject/36531164/",
+      "summary": "《废世界》目前在豆瓣评分为 7.2 分。",
+      "category": "日本电影",
+      "release_year": "最新上映",
+      "quarter_group": "最新电影/剧场版"
+    }
+  ]
+};
+                
+                document.getElementById('update-time').innerText = `🔄 更新时间：${data.updated_at || '最新'}（共 ${data.total_count || 0} 部）`;
+                allItems = data.items || [];
+                filteredItems = [...allItems];
+                
+                const quarters = [...new Set(allItems.map(i => i.quarter_group).filter(Boolean))];
+                const qSelect = document.getElementById('quarter-filter');
+                quarters.forEach(q => {
+                    const opt = document.createElement('option');
+                    opt.value = q;
+                    opt.innerText = q;
+                    qSelect.appendChild(opt);
+                });
+                renderCards(filteredItems);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('media-grid').innerHTML = '<p style="color:red; grid-column: 1/-1; text-align:center;">⚠️ 数据解析失败</p>';
+            }
+        }
+
+        function renderCards(items) {
+            const grid = document.getElementById('media-grid');
+            if (!items || items.length === 0) {
+                grid.innerHTML = '<p style="color:#86868b; grid-column: 1/-1; text-align:center; padding: 40px;">没有匹配的影视剧</p>';
+                return;
+            }
+            grid.innerHTML = items.map((item, idx) => `
+                <div class="card" onclick="openModal(${idx})">
+                    <div class="poster-wrapper">
+                        <img class="poster" src="${getCleanPoster(item.poster_url)}" alt="${item.title}" loading="lazy">
+                    </div>
+                    <div class="info">
+                        <div>
+                            <div class="tag">${item.quarter_group || item.category || '日剧'}</div>
+                            <div class="title" title="${item.title}">${item.title}</div>
+                        </div>
+                        <div class="score">⭐ 豆瓣评分：${item.score || '暂无'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterData() {
+            const searchKw = document.getElementById('search').value.toLowerCase().trim();
+            const catVal = document.getElementById('category-filter').value;
+            const qVal = document.getElementById('quarter-filter').value;
+            
+            filteredItems = allItems.filter(item => {
+                const matchSearch = !searchKw || 
+                    (item.title && item.title.toLowerCase().includes(searchKw)) ||
+                    (item.summary && item.summary.toLowerCase().includes(searchKw)) ||
+                    (item.cast && item.cast.toLowerCase().includes(searchKw));
+                const matchCat = (catVal === 'all') || (item.category === catVal);
+                const matchQ = (qVal === 'all') || (item.quarter_group === qVal);
+                return matchSearch && matchCat && matchQ;
+            });
+            renderCards(filteredItems);
+        }
+
+        function openModal(idx) {
+            const item = filteredItems[idx];
+            if (!item) return;
+
+            document.getElementById('modal-img').src = getCleanPoster(item.poster_url);
+            document.getElementById('modal-tag').innerText = item.quarter_group || item.category || '日剧';
+            document.getElementById('modal-title').innerText = item.title;
+            document.getElementById('modal-score').innerText = `⭐ 豆瓣评分：${item.score || '暂无'}`;
+            
+            let metaText = '';
+            if (item.release_date) metaText += `📅 上映/首播：${item.release_date}<br>`;
+            if (item.cast) metaText += `👤 主演/卡司：${item.cast}<br>`;
+            document.getElementById('modal-meta').innerHTML = metaText;
+
+            document.getElementById('modal-summary').innerText = item.summary || item.description || '暂无故事简介。';
+
+            const modal = document.getElementById('modal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(e) {
+            if (!e || e.target.id === 'modal' || e.target.className === 'modal-close') {
+                const modal = document.getElementById('modal');
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
+
+<script>init();</script>
