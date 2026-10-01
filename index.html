@@ -3,57 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日剧 & 电影看板</title>
+  <title>2020-2026年日剧全量大数据库</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f5f7; color: #333; padding: 20px; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-    h1 { font-size: 24px; font-weight: 700; }
-    .status-bar { font-size: 13px; color: #666; background: #eef0f3; padding: 6px 12px; border-radius: 12px; }
+    h1 { font-size: 24px; font-weight: 700; color: #111; }
+    .status-bar { font-size: 13px; color: #555; background: #eef0f3; padding: 8px 16px; border-radius: 20px; font-weight: 600; }
     .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .search-input { flex: 1; min-width: 200px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
-    select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
-    .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .search-input { flex: 2; min-width: 220px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; outline: none; font-size: 14px; }
+    select { flex: 1; min-width: 150px; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; }
+    .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
     .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
-    .poster-box { width: 100%; aspect-ratio: 2/3; background: #333; position: relative; overflow: hidden; }
+    .poster-box { width: 100%; aspect-ratio: 2/3; background: #eee; position: relative; overflow: hidden; }
     .poster-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .card-info { padding: 14px; }
-    .tags { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-    .tag { font-size: 11px; color: #0066cc; background: #e8f2ff; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
-    .season-tag { color: #e67e22; background: #fef5e7; }
-    .title { font-size: 15px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .score { font-size: 13px; color: #f5a623; font-weight: bold; }
+    .card-info { padding: 12px; }
+    .tags { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+    .tag { font-size: 10px; color: #0066cc; background: #e8f2ff; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+    .season-tag { color: #d35400; background: #fef5e7; }
+    .title { font-size: 14px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .score { font-size: 12px; color: #f5a623; font-weight: bold; }
+    
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
     .modal-overlay.active { display: flex; }
-    .modal-content { background: white; width: 90%; max-width: 650px; border-radius: 16px; padding: 24px; position: relative; display: flex; gap: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-    .modal-close { position: absolute; top: 16px; right: 16px; background: #eee; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; font-weight: bold; }
-    .modal-poster { width: 160px; aspect-ratio: 2/3; border-radius: 8px; object-fit: cover; background: #eee; flex-shrink: 0; }
+    .modal-content { background: white; width: 90%; max-width: 600px; border-radius: 16px; padding: 24px; position: relative; display: flex; gap: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: #eee; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+    .modal-poster { width: 150px; aspect-ratio: 2/3; border-radius: 8px; object-fit: cover; background: #eee; flex-shrink: 0; }
     .modal-details { flex: 1; }
-    .modal-title { font-size: 20px; font-weight: bold; margin: 8px 0; line-height: 1.3; }
-    .modal-score { color: #f5a623; font-weight: bold; margin-bottom: 12px; font-size: 14px; }
-    .modal-summary-text { background: #f8f9fa; padding: 14px; border-radius: 8px; font-size: 13px; color: #444; line-height: 1.7; max-height: 240px; overflow-y: auto; white-space: pre-line; border: 1px solid #eee; }
+    .modal-title { font-size: 18px; font-weight: bold; margin: 8px 0; }
+    .modal-summary-text { background: #f8f9fa; padding: 12px; border-radius: 8px; font-size: 13px; color: #444; line-height: 1.6; max-height: 220px; overflow-y: auto; white-space: pre-line; margin-top: 10px; }
   </style>
 </head>
 <body>
   <header>
-    <h1>📺 日剧 & 电影看板</h1>
-    <div class="status-bar" id="update-time">🔄 多来源全自动更新: 2026-10-01 19:37:13 (共 7 部)</div>
+    <h1>📺 2020-2026年日剧完整典藏库</h1>
+    <div class="status-bar" id="update-time">📚 已入库全量日剧：0 部 (更新时间: 2026-10-01 19:40:47)</div>
   </header>
 
   <div class="controls">
-    <input type="text" id="search-input" class="search-input" placeholder="搜索片名、演员或简介...">
-    <select id="category-filter">
-      <option value="ALL">全部分类</option>
-      <option value="日剧">日剧</option>
-      <option value="日本电影">日本电影</option>
+    <input type="text" id="search-input" class="search-input" placeholder="输入任意剧名、年份或演员搜索全量库...">
+    
+    <select id="year-filter">
+      <option value="ALL">全部年份 (2020-2026)</option>
+      <option value="2026">2026 年</option>
+      <option value="2025">2025 年</option>
+      <option value="2024">2024 年</option>
+      <option value="2023">2023 年</option>
+      <option value="2022">2022 年</option>
+      <option value="2021">2021 年</option>
+      <option value="2020">2020 年</option>
     </select>
+
     <select id="season-filter">
-      <option value="ALL">全部季度 (春/夏/秋/冬)</option>
-      <option value="春季剧">🌸 春季剧</option>
-      <option value="夏季剧">☀️ 夏季剧</option>
-      <option value="秋季剧">🍁 秋季剧</option>
-      <option value="冬季剧">❄️ 冬季剧</option>
+      <option value="ALL">全部季节 (春/夏/秋/冬)</option>
+      <option value="春季剧">🌸 春季剧 (4-6月)</option>
+      <option value="夏季剧">☀️ 夏季剧 (7-9月)</option>
+      <option value="秋季剧">🍁 秋季剧 (10-12月)</option>
+      <option value="冬季剧">❄️ 冬季剧 (1-3月)</option>
     </select>
   </div>
 
@@ -65,35 +72,39 @@
       <img src="" class="modal-poster" id="modal-poster">
       <div class="modal-details">
         <div class="tags">
-          <span class="tag" id="modal-tag">--</span>
+          <span class="tag" id="modal-tag">日剧</span>
           <span class="tag season-tag" id="modal-season">--</span>
         </div>
         <div class="modal-title" id="modal-title">--</div>
-        <div class="modal-score" id="modal-score">⭐ 评分: --</div>
-        <div style="font-weight:bold; margin-bottom:6px; font-size:14px;">📖 详细故事简介</div>
-        <div class="modal-summary-text" id="modal-summary">暂无详细简介。</div>
+        <div class="score" id="modal-score" style="margin-bottom:10px;">⭐ 评分: --</div>
+        <div style="font-weight:bold; font-size:13px;">📖 详细介绍与分类归档</div>
+        <div class="modal-summary-text" id="modal-summary">--</div>
       </div>
     </div>
   </div>
 
   <script>
-    const dataContainer = {"updated_at": "2026-10-01 19:37:13", "total_count": 7, "items": [{"id": "jd_1", "title": "海的开始 (海のはじまり)", "poster_url": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80", "score": "8.6", "category": "日剧", "season": "2026年 春季剧", "summary": "【故事背景与详细剧情】\n月冈夏（目黑莲 饰）是一位在东京印章制作公司工作的28岁青年。在大学时期，他与同班同学南云水季相恋，却在大学毕业前夕突然收到了水季提出的分手通知，随后水季便彻底消失在夏的生活中。\n\n7年后，夏突然接到了大学同学的电话，得知水季已经离世。在参加水季告别式的现场，夏意外遇到了一个名叫海（泉谷星奈 饰）的小女孩，并震惊地得知——这个7岁的小女孩居然是自己与水季的亲生女儿。\n\n面对突然出现的女儿，以及水季生前隐藏的秘密，夏与水季的家人、现任女友（有村架纯 饰）展开了一段充满温度与挣扎的成长与抚养之旅。"}, {"id": "jd_2", "title": "黑色止血钳 第二季 (ブラックペアン)", "poster_url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80", "score": "8.8", "category": "日剧", "season": "2026年 夏季剧", "summary": "【来自纬来日本台&TBS热播频道】\n经典医疗剧强力续作！二宫和也突破性饰演全新角色——“恶魔外科医”天城雪彦。\n\n天城雪彦是一位拥有天神般超凡手术技巧的天才心心脏外科医生，但他个性极其古怪刁钻，不仅公开收取巨额回扣，甚至规定想要让他进行手术的患者必须参与硬币对赌，赌赢了才能接受他的治疗。\n\n东城大学医学部附属医院为了推进医疗创新，决定将这位极具争议的天才医生引入医院。然而天城独特的医疗手段与对金钱的执念，打破了原有的医疗秩序，与世良雅志（竹内凉真 饰）等人爆发了激烈的理念冲突。"}, {"id": "jd_3", "title": "重启人生 (ブラッシュアップライフ)", "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80", "score": "9.4", "category": "日剧", "season": "2026年 秋季剧", "summary": "【Bilibili爆款&高分神剧】\n33岁的近藤麻美（安藤樱 饰）是在市役所工作的普通公务员，与父母和妹妹生活在一起，和两位闺蜜有着平凡又快乐的日常。\n\n在一次意外的车祸中，麻美不幸去世。在死后的死后阴间服务台，工作人员告诉她：如果想在下辈子投胎为人，就必须在今世积累足够的阴德，否则下辈子只能投胎成危地马拉的大食蚁兽。\n\n为了能够再次成为人类，麻美决定保留记忆回到最初出生的那一天，重新开启自己的人生。她不仅要在幼年时期阻止幼儿园老师与家长出轨，还要拯救闺蜜免于空难事故，展开了一场笑中带泪的积德重写人生奇旅。"}, {"id": "jd_4", "title": "VIVANT (跨国谍影大作)", "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80", "score": "8.9", "category": "日剧", "season": "2026年 冬季剧", "summary": "【纬来日本台剧集推荐】\n堺雅人、阿部宽、二阶堂富美超强阵容领衔！\n\n丸菱商事的普通职员乃木忧助（堺雅人 饰）在进行跨国转账时，意外将1000万美元汇成了1亿美元。为了追回误转的9000万美元巨款，乃木独自一人前往中亚的大尔班共和国。\n\n然而刚踏上异国土地，他就遭遇了恐怖分子的炸弹袭击，被卷入了名为“VIVANT”的神秘秘密组织风暴中。公安警察野崎（阿部宽 饰）与无国界医生柚木（二阶堂富美 饰）相继被卷入，一场跨越国家与正邪边缘的惊天大战拉开序幕。"}, {"id": "jd_5", "title": "极度不妥！ (不適切にもほどがある！)", "poster_url": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=600&q=80", "score": "8.7", "category": "日剧", "season": "2026年 冬季剧", "summary": "【宫藤官九郎最新爆笑编剧】\n1986年（昭和时代）的中学体育老师小川市郎（阿部贞夫 饰）是一个性格粗鲁、口无遮拦的“昭和大叔”。在学校里，他经常给学生讲粗口、抽烟，是所有人眼中的极度不妥的人物。\n\n某天，小川在一辆公交车上意外通过时空隧道穿越到了2024年（令和时代）。在讲究合规性、敏感词控制和过度礼貌的现代社会中，小川的直言不讳虽然显得格格不入，却意外戳破了现代人伪善与压抑的假面具，给现代社会带来了强烈的冲击。"}, {"id": "jm_1", "title": "怪物 (Monster - 是枝裕和导演)", "poster_url": "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80", "score": "8.8", "category": "日本电影", "season": "最新日本电影", "summary": "【戛纳金棕榈获奖团队作品】\n平静的小镇上，单亲妈妈早织（安藤樱 饰）注意到儿子凑（黑川想矢 饰）近期行为异常：耳朵受伤、鞋子丢失、甚至自称“脑子里装了大象”。经过询问，凑透露自己在学校遭到了保利老师（永山瑛太 饰）的暴力体罚。\n\n愤怒的早织冲到学校讨要说法，然而学校管理层的冷漠敷衍与保利老师的怪异态度令人窒息。\n\n电影通过“母亲”、“老师”和“孩子”三个完全不同的视角重述这一事件，层层剥开谎言，最终露出了令人心碎又无比温暖的真相。"}, {"id": "jm_2", "title": "哥斯拉-1.0 (Godzilla Minus One)", "poster_url": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=600&q=80", "score": "8.4", "category": "日本电影", "season": "最新日本电影", "summary": "【奥斯卡最佳视觉效果奖获奖电影】\n二战刚结束，日本百废待兴，国力跌至归零的零（Zero）点状态。就在此时，因核试验而产生基因突变的巨大怪兽“哥斯拉”突然登陆日本，将原本就陷入绝境的社会推向了负数（Minus）的深渊。\n\n前神风特攻队飞行员敷岛浩一（神木隆之介 饰）带着对战争的心理阴影与愧疚，与平民民间力量自发组织起来，使用退役军舰与旧式战机，向无可匹敌的巨兽展开了关乎人类尊严的反击战。"}]};
+    const dataContainer = {"updated_at": "2026-10-01 19:40:47", "total_count": 0, "items": []};
     let allData = dataContainer.items || [];
 
     function renderGrid(items) {
       const grid = document.getElementById('media-grid');
       grid.innerHTML = '';
+      if(items.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:#888;">未搜索到匹配的日剧</div>';
+        return;
+      }
       items.forEach(item => {
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
           <div class="poster-box">
-            <img src="${item.poster_url}" alt="${item.title}" loading="lazy">
+            <img src="${item.poster_url}" alt="${item.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80'">
           </div>
           <div class="card-info">
             <div class="tags">
-              <span class="tag">${item.category || '日剧'}</span>
-              <span class="tag season-tag">${item.season || '热播'}</span>
+              <span class="tag">${item.year}年</span>
+              <span class="tag season-tag">${item.season.split(' ')[1] || item.season}</span>
             </div>
             <div class="title">${item.title}</div>
             <div class="score">⭐ 评分: ${item.score}</div>
@@ -106,36 +117,33 @@
 
     function openModal(item) {
       document.getElementById('modal-poster').src = item.poster_url;
-      document.getElementById('modal-tag').innerText = item.category || '日剧';
-      document.getElementById('modal-season').innerText = item.season || '最新';
+      document.getElementById('modal-season').innerText = item.season;
       document.getElementById('modal-title').innerText = item.title;
       document.getElementById('modal-score').innerText = `⭐ 评分: ${item.score}`;
-      document.getElementById('modal-summary').innerText = item.summary || '暂无详细故事简介。';
+      document.getElementById('modal-summary').innerText = item.summary;
       document.getElementById('modal-overlay').classList.add('active');
     }
 
     function filterData() {
       const searchText = document.getElementById('search-input').value.toLowerCase();
-      const catVal = document.getElementById('category-filter').value;
+      const yearVal = document.getElementById('year-filter').value;
       const seasonVal = document.getElementById('season-filter').value;
 
       const filtered = allData.filter(item => {
         const matchSearch = item.title.toLowerCase().includes(searchText) || (item.summary && item.summary.toLowerCase().includes(searchText));
-        const matchCat = catVal === 'ALL' || item.category === catVal;
+        const matchYear = yearVal === 'ALL' || item.year === yearVal;
         const matchSeason = seasonVal === 'ALL' || (item.season && item.season.includes(seasonVal));
-        return matchSearch && matchCat && matchSeason;
+        return matchSearch && matchYear && matchSeason;
       });
       renderGrid(filtered);
     }
 
     document.getElementById('search-input').addEventListener('input', filterData);
-    document.getElementById('category-filter').addEventListener('change', filterData);
+    document.getElementById('year-filter').addEventListener('change', filterData);
     document.getElementById('season-filter').addEventListener('change', filterData);
     document.getElementById('modal-close').addEventListener('click', () => document.getElementById('modal-overlay').classList.remove('active'));
 
-    window.onload = () => {
-      renderGrid(allData);
-    };
+    window.onload = () => { renderGrid(allData); };
   </script>
 </body>
 </html>
