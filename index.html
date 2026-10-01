@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2020-2026年日剧全量大数据库</title>
+  <title>2020-2026年日剧完整典藏库</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f5f7; color: #333; padding: 20px; }
@@ -13,7 +13,7 @@
     .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .search-input { flex: 2; min-width: 220px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; outline: none; font-size: 14px; }
     select { flex: 1; min-width: 150px; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
     .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
     .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
     .poster-box { width: 100%; aspect-ratio: 2/3; background: #eee; position: relative; overflow: hidden; }
@@ -38,7 +38,7 @@
 <body>
   <header>
     <h1>📺 2020-2026年日剧完整典藏库</h1>
-    <div class="status-bar" id="update-time">📚 已入库全量日剧：0 部 (更新时间: 2026-10-01 19:40:47)</div>
+    <div class="status-bar" id="update-time">📚 已入库全量日剧：22 部 (更新时间: 2026-10-01 19:44:25)</div>
   </header>
 
   <div class="controls">
@@ -84,7 +84,7 @@
   </div>
 
   <script>
-    const dataContainer = {"updated_at": "2026-10-01 19:40:47", "total_count": 0, "items": []};
+    const dataContainer = {"updated_at": "2026-10-01 19:44:25", "total_count": 22, "items": [{"id": "2026_1", "title": "海的开始", "year": "2026", "season": "2026年 🌸 春季剧", "score": "8.6", "poster_url": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80", "summary": "目黑莲、有村架纯主演，讲述单亲父亲与突然出现的女儿之间的深情羁绊。"}, {"id": "2026_2", "title": "黑色止血钳 第二季", "year": "2026", "season": "2026年 ☀️ 夏季剧", "score": "8.8", "poster_url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80", "summary": "二宫和也突破饰演恶魔外科医生天城雪彦，高能手术与医疗权谋大剧。"}, {"id": "2026_3", "title": "新宿野战医院", "year": "2026", "season": "2026年 ☀️ 夏季剧", "score": "8.3", "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80", "summary": "小池荣子与仲野太贺领衔，宫藤官九郎编剧的歌舞伎町医疗喜剧。"}, {"id": "2026_4", "title": "如虎添翼", "year": "2026", "season": "2026年 🌸 春季剧", "score": "8.9", "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80", "summary": "伊藤沙莉主演晨间剧，讲述日本第一位女性法官与律师的励志传奇。"}, {"id": "2026_5", "title": "致光之君", "year": "2026", "season": "2026年 ❄️ 冬季剧", "score": "8.2", "poster_url": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=600&q=80", "summary": "吉高由里子主演平安时代大河剧，展现紫式部与源氏物语创作历程。"}, {"id": "2025_1", "title": "狮子的藏身处", "year": "2025", "season": "2025年 🍁 秋季剧", "score": "8.7", "poster_url": "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80", "summary": "柳乐优弥主演悬疑温情悬疑剧，兄弟俩收留神秘小男孩后卷入危机。"}, {"id": "2025_2", "title": "海之始", "year": "2025", "season": "2025年 ☀️ 夏季剧", "score": "8.4", "poster_url": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=600&q=80", "summary": "富士电视台月9大作，关于生命亲情与爱的思考。"}, {"id": "2025_3", "title": "Antidote 救赎", "year": "2025", "season": "2025年 🌸 春季剧", "score": "8.5", "poster_url": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80", "summary": "长泽雅美重磅加盟律政悬疑连续剧。"}, {"id": "2024_1", "title": "极度不妥！", "year": "2024", "season": "2024年 ❄️ 冬季剧", "score": "8.8", "poster_url": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=600&q=80", "summary": "阿部贞夫穿越穿越时空，昭和大叔在现代令和社会引发爆笑与思考。"}, {"id": "2024_2", "title": "繁花 (日配版)", "year": "2024", "season": "2024年 🌸 春季剧", "score": "8.7", "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80", "summary": "日本引进播出的时代风云剧作。"}, {"id": "2024_3", "title": "Unmet 某脑外科医的日记", "year": "2024", "season": "2024年 🌸 春季剧", "score": "8.9", "poster_url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80", "summary": "杉咲花主演，记忆只有一天的脑外科医生奇迹救治患者的故事。"}, {"id": "2024_4", "title": "Believe-通往你的桥", "year": "2024", "season": "2024年 🌸 春季剧", "score": "8.1", "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80", "summary": "木村拓哉主演朝日电视台开局65周年纪念大剧。"}, {"id": "2023_1", "title": "重启人生", "year": "2023", "season": "2023年 ❄️ 冬季剧", "score": "9.4", "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80", "summary": "安藤樱主演笨蛋节奏神剧，普通公务员保留记忆穿越重写的积德人生。"}, {"id": "2023_2", "title": "VIVANT", "year": "2023", "season": "2023年 ☀️ 夏季剧", "score": "8.9", "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80", "summary": "堺雅人、阿部宽、二阶堂富美超强阵容，跨国谍影大作。"}, {"id": "2023_3", "title": "孤注一掷的恋爱", "year": "2023", "season": "2023年 🍁 秋季剧", "score": "8.5", "poster_url": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80", "summary": "社会浪漫剧经典作。"}, {"id": "2022_1", "title": "First Love 初恋", "year": "2022", "season": "2022年 🍁 秋季剧", "score": "8.8", "poster_url": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80", "summary": "佐藤健、满岛光主演，灵感来自宇多田光名曲的跨越20年深情巨作。"}, {"id": "2022_2", "title": "勿言推理", "year": "2022", "season": "2022年 ❄️ 冬季剧", "score": "8.6", "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80", "summary": "菅田将晖主演，爆炸头大学生通过碎碎念解开重重命案。"}, {"id": "2022_3", "title": "Silent (静雪)", "year": "2022", "season": "2022年 🍁 秋季剧", "score": "8.5", "poster_url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80", "summary": "川口春奈与目黑莲，失聪青年与高中初恋重逢的催泪爱情故事。"}, {"id": "2021_1", "title": "大豆田永久子与三个前夫", "year": "2021", "season": "2021年 🌸 春季剧", "score": "8.7", "poster_url": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=600&q=80", "summary": "松隆子主演，坂元裕二编剧，独立女性与三位怪咖前夫的都市喜剧。"}, {"id": "2021_2", "title": "我家的故事", "year": "2021", "season": "2021年 ❄️ 冬季剧", "score": "8.8", "poster_url": "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80", "summary": "长濑智也、宫藤官九郎金牌组合，摔角手回家照顾患病父亲的温情剧。"}, {"id": "2020_1", "title": "半泽直树 第二季", "year": "2020", "season": "2020年 ☀️ 夏季剧", "score": "9.3", "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80", "summary": "堺雅人百倍奉还！创造日本近10年收视率最高纪录的商战神剧。"}, {"id": "2020_2", "title": "MIU404", "year": "2020", "season": "2020年 ☀️ 夏季剧", "score": "9.0", "poster_url": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80", "summary": "绫野刚、星野源双男主，野木亚纪子编剧的24小时机动搜查队疾速爽剧。"}]};
     let allData = dataContainer.items || [];
 
     function renderGrid(items) {
@@ -99,7 +99,7 @@
         card.className = 'card';
         card.innerHTML = `
           <div class="poster-box">
-            <img src="${item.poster_url}" alt="${item.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=600&q=80'">
+            <img src="${item.poster_url}" alt="${item.title}" loading="lazy">
           </div>
           <div class="card-info">
             <div class="tags">
